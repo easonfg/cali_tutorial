@@ -9,7 +9,7 @@ iso_func_draw = function(validate, val_estimates_norm, calib.model){
   rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = "gray")
   
   plot(dat$yhat,dat$y,
-       xlim=c(-0.1, .4), xlab="Uncalibrated Estimates",ylab="Calibrated Estimates")
+       xlim=c(-0.1, 1), xlab="Uncalibrated Estimates",ylab="Calibrated Estimates")
   
   lines(sf1, do.points = FALSE, col = "blue", lwd = 2)
   legend("left", c('Isotonic fit','Data'),lty=c(1,NA),pch=c('','o'), col = c('blue', 'black'),bg='white')

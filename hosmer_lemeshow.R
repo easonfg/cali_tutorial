@@ -33,4 +33,5 @@ hosmer_lemeshow = function(y, prob, g, stat_type){
   
   cat('PVALUE', PVAL, '\n')
   cat('stat', H_stat, '\n')
+  return(PVAL)
 }
