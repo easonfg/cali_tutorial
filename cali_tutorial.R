@@ -19,6 +19,7 @@ source('./lr_iso_recal.R')
 source('./hosmer_lemeshow.R')
 source('./Spiegelhalter_z.R')
 source('./reliability_diagram.R')
+source('./mce_ece.R')
 
 set.seed(612)
 
@@ -76,8 +77,8 @@ pipe_run = function(ninstances){
   dev_prob[dev_prob<0.027] = dev_prob[dev_prob<0.027]
   dev_prob[dev_prob>0.127] = dev_prob[dev_prob>0.127]
 
-    dev_labels = as.integer(uni_dist < dev_prob)
-    ##### use uniform distributions to create labels ####
+  dev_labels = as.integer(uni_dist < dev_prob)
+  ##### use uniform distributions to create labels ####
   
   # combine coefficients and labels  
   perfect = as.data.frame(t(out))
@@ -85,7 +86,7 @@ pipe_run = function(ninstances){
   perfect = vert_norm(perfect)
   
 
-  #### set training to be 50% of total number of samples and validation to be 25%
+  #### set training to be 50% of total number of samples and validation and test set to be 25%
   ### create train, validate, and test datasets
   smp_size <- floor(0.50 * nrow(perfect))
   val_smp_size = floor(0.25*nrow(perfect))
@@ -97,33 +98,24 @@ pipe_run = function(ninstances){
   validate_ind <- sample(seq_len(nrow(val_test)), size = val_smp_size)
   validate <- val_test[validate_ind, ]
   test <- val_test[-validate_ind, ]
-  
-  
   #######
   
 
   
   ###
   
+  ##### logistic regression ####
   ### train and predict  ### 
   #train with 'train' dataset and and predict 'test' dataset with logistic regressions 
   log_mod <- glm(y~., family=binomial(link='logit'),data=train)
   log_pred = as.data.frame(predict(log_mod, test[,-length(test)], type='response'))
-  
-  
 
-  #logistic regression
+  ### get auc  ### 
   pr <- ROCR::prediction(log_pred, test$y)
   auc_log <- ROCR::performance(pr, measure = "auc")
   auc_log <- auc_log@y.values[[1]]
-  ### get auc  ### 
-  
-  
-
   
   ### recalibration ###
-
-  
   # lr recalibration with  platt
   lr_platt_recal = lr_platt_recal_func(log_mod, validate, log_pred, test)
   ## lr recalibration with  isotonic regression
@@ -132,14 +124,12 @@ pipe_run = function(ninstances){
   
 
   ###### svm #######
+  ### train and predict  ### 
   svmfit = svm(factor(y) ~ ., data = train, kernel = "linear", cost = 10, scale = FALSE, probability=TRUE)
   ygrid = predict(svmfit, test[,-length(test)], probability=TRUE)
   ygrid_norm = as.data.frame(attr(ygrid, 'probabilities')[,2])
-  ### train and predict  ### 
-  
   
   ### get auc  ### 
-  #svm
   pr <- ROCR::prediction(ygrid_norm, test$y)
   auc_svmnorm <- ROCR::performance(pr, measure = "auc")
   auc_svmnorm <- auc_svmnorm@y.values[[1]]
@@ -151,7 +141,6 @@ pipe_run = function(ninstances){
   ###### svm #######
   
   
-
   ### measuring calibration ###
   ### hosmer lemeshow test ###
   print('hosmer lemeshow test: lr org C')
@@ -207,6 +196,26 @@ pipe_run = function(ninstances){
 
   ### Spiegelhalter z test ###
   
+  #### mce ece ####
+  print('lr org')
+  print(ece_mce(test$y, log_pred[,1], 10, 'C'))
+  
+  print('svm org')
+  print(ece_mce(test$y, ygrid_norm[,1], 10, 'C'))
+  
+  print('lr platt')
+  print(ece_mce(test$y, lr_platt_recal, 10, 'C'))
+  
+  print('lr iso')
+  print(ece_mce(test$y, lr_iso_recal, 10, 'C'))
+  
+  print('svm platt')
+  print(ece_mce(test$y, svm_platt_recal, 10, 'C'))
+  
+  print('svm iso')
+  print(ece_mce(test$y, svm_iso_recal, 10, 'C'))
+  
+  #### mce ece ####
   
   #### reliability diagrams  ####
   ###original LR and SVM with C statistics
@@ -269,12 +278,6 @@ pipe_run = function(ninstances){
   ### measuring calibration ###
   
   
-  return(list(hosmer_lemeshow(test$y, ygrid_norm[,1], 10, 'C'),
-              hosmer_lemeshow(test$y, svm_platt_recal, 10, 'C'), 
-              hosmer_lemeshow(test$y, svm_iso_recal, 10, 'C'),
-              hosmer_lemeshow(test$y, log_pred[,1], 10, 'C'),
-              hosmer_lemeshow(test$y, ygrid_norm[,1], 10, 'H'),
-              hosmer_lemeshow(test$y, log_pred[,1], 10, 'H')))
 }
 
 
