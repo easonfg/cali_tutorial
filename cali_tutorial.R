@@ -2,7 +2,7 @@ rm(list=ls())
 
 library(pROC)
 library(ResourceSelection)
-library(randomForest)
+# library(randomForest)
 library(e1071)
 library(generalhoslem)
 library(ggplot2)
@@ -20,6 +20,8 @@ source('./hosmer_lemeshow.R')
 source('./Spiegelhalter_z.R')
 source('./reliability_diagram.R')
 source('./mce_ece.R')
+source('./cox.R')
+source('./ici.R')
 
 set.seed(612)
 
@@ -71,13 +73,14 @@ pipe_run = function(ninstances){
   ##### use uniform distributions to create labels ####
   uni_dist = runif(ninstances, min = 0, max = 1)
   labels = as.integer(uni_dist < prob)
-
+  
   
   dev_prob = rep(prob)
   dev_prob[dev_prob<0.027] = dev_prob[dev_prob<0.027]
   dev_prob[dev_prob>0.127] = dev_prob[dev_prob>0.127]
 
   dev_labels = as.integer(uni_dist < dev_prob)
+  
   ##### use uniform distributions to create labels ####
   
   # combine coefficients and labels  
@@ -140,6 +143,40 @@ pipe_run = function(ninstances){
   svm_iso_recal = svm_iso_recal_func(svmfit, validate, ygrid_norm, test)
   ###### svm #######
   
+  ##average absolute difference ##
+  print('log org avg absolute diff')
+  print(mean(abs(test$y-log_pred[,1])))
+  print('svm org avg aboslute diff')
+  print(mean(abs(test$y-ygrid_norm[,1])))
+  
+  print('log platt avg absolute diff')
+  print(mean(abs(test$y-lr_platt_recal)))
+  print('svm platt avg absolute diff')
+  print(mean(abs(test$y-svm_platt_recal)))
+  
+  print('log iso avg absolute diff')
+  print(mean(abs(test$y-lr_iso_recal)))
+  print('svm iso avg absolute diff')
+  print(mean(abs(test$y-svm_iso_recal)))
+  ##average absolute difference##
+  
+  
+  ##calibration-in-the-large##
+  print('log org cal in large')
+  print(mean(test$y)/mean(log_pred[,1]))
+  print('svm org cal in large')
+  print(mean(test$y)/mean(ygrid_norm[,1]))
+  
+  print('log platt cal in large')
+  print(mean(test$y)/mean(lr_platt_recal))
+  print('svm platt cal in large')
+  print(mean(test$y)/mean(svm_platt_recal))
+  
+  print('log iso cal in large')
+  print(mean(test$y)/mean(lr_iso_recal))
+  print('svm iso cal in large')
+  print(mean(test$y)/mean(svm_iso_recal))
+  ##calibration-in-the-large##
   
   ### measuring calibration ###
   ### hosmer lemeshow test ###
@@ -216,6 +253,38 @@ pipe_run = function(ninstances){
   print(ece_mce(test$y, svm_iso_recal, 10, 'C'))
   
   #### mce ece ####
+  
+  
+  
+  #### cox ####
+  print('cox: lr org')
+  print(cox_first_degree(test$y, log_pred[,1]))
+  print('cox: svm org')
+  print(cox_first_degree(test$y, ygrid_norm[,1]))
+  print('cox: lr platt')
+  print(cox_first_degree(test$y, lr_platt_recal))
+  print('cox: lr iso')
+  print(cox_first_degree(test$y, lr_iso_recal))
+  print('cox: svm platt')
+  print(cox_first_degree(test$y, svm_platt_recal))
+  print('cox: svm iso')
+  print(cox_first_degree(test$y, svm_iso_recal))
+  #### cox ####
+  
+  #### ici ####
+  print('ici: lr org')
+  print(ici(test$y, log_pred[,1]))
+  print('ici: svm org')
+  print(ici(test$y, ygrid_norm[,1]))
+  print('ici: lr platt')
+  print(ici(test$y, lr_platt_recal))
+  print('ici: lr iso')
+  print(ici(test$y, lr_iso_recal))
+  print('ici: svm platt')
+  print(ici(test$y, svm_platt_recal))
+  print('ici: svm iso')
+  print(ici(test$y, svm_iso_recal))
+  #### ici ####
   
   #### reliability diagrams  ####
   ###original LR and SVM with C statistics
